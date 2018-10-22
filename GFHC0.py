@@ -34,7 +34,8 @@ class Stack:
             i = i + 1
 
 
-rec_stack = Stack()  # 用来记录安装的芯片的顺序
+map_stack = Stack()  # 用来记录安装芯片后的地图信息
+chip_stack = Stack()  # 用来记录安装的芯片的顺序
 ChipList33 = [(0, 0), (0, 1), (0, 2),
               (1, 0), (1, 1), (1, 2)]
 ChipList6 = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5)]
@@ -47,6 +48,7 @@ MapLList = [[0, 0, 0, 0, 0, 0],
 ChipPoolLists = [ChipList33, ChipList6]
 
 
+# 用于在屏幕上输出map的图像结果
 def show_map(ml):
     _MapLList = ml
     _resStr = 'MapInfo:\n'
@@ -58,17 +60,19 @@ def show_map(ml):
     print(_resStr)
 
 
-def install_chip():
-    _MapWidth = len(MapLList)
+def install_chip(_map):
+    maplist = copy.deepcopy(_map)
+    _MapWidth = len(maplist)
     for x in range(_MapWidth):
         for y in range(_MapWidth):
+            # 这边的xy是可插入点坐标
             for chiplist in ChipPoolLists:
-                if insertable(x, y, chiplist):
-                    no = rec_stack.size() + 1
+                if insertable(x, y, chiplist, maplist):
+                    no = map_stack.size() + 1
                     inserted(x, y, chiplist, no)
                     show_map(MapLList)
                     maplist_push = copy.deepcopy(MapLList)
-                    rec_stack.push(maplist_push)
+                    map_stack.push(maplist_push)
                     print('==============================')
                     break
                 else:
@@ -78,11 +82,12 @@ def install_chip():
     return
 
 
-def insertable(x, y, _chiplist):
+def insertable(x, y, _chiplist, _map):
+    maplist = _map
     for g in _chiplist:
         xp, yp = g
         try:
-            gno = MapLList[x + xp][y + yp]
+            gno = maplist[x + xp][y + yp]
         except IndexError:
             return False
         finally:
@@ -92,11 +97,16 @@ def insertable(x, y, _chiplist):
     return True
 
 
-def inserted(x, y, _chiplist, _no):
+# xy表示插入起始点的坐标,_chiplist表示插入芯片的类型,
+# _no表示插入的数值, _map表示被插入的map信息
+# 返回插入后的map
+def inserted(x, y, _chiplist, _no, _map):
+    maplist = copy.deepcopy(_map)
     for g in _chiplist:
         xp, yp = g
-        MapLList[x + xp][y + yp] = _no
+        maplist[x + xp][y + yp] = _no
     print(_chiplist, 'is inserted')
+    return maplist
 
 
 def rotate90(_chiplist, _time=0):
@@ -113,7 +123,17 @@ def rotate90(_chiplist, _time=0):
         return list_
 
 
+# 返回False为不满,代表未完全插入;返回True为满,已经完全插入.
+def isfulll(_map):
+    _MapWidth = len(MapLList)
+    for x in range(_MapWidth):
+        for y in range(_MapWidth):
+            if _map[x][y] == 0:
+                return False
+    return True
+
+
 if __name__ == "__main__":
     install_chip()
-    rec_stack.show()
+    map_stack.show()
     print('the process is end')

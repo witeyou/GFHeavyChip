@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+功能:本程序旨在实验出少女前线重装部队芯片强化的最优情况
+作者:史学超
+更新日期:2018.10.22
+现在已经实现了一个简单的模型,需要的是不断额往芯片池中添加芯片
+"""
+# TODO(sxc): 添加图像化界面
+# TODO(sxc): 芯片数据要能够附带属性
+# TODO(sxc): 重复结果的删除和结果的评分
+
 import copy
 
 
-# define stack data structure be used to save info
 class Stack:
     def __init__(self):
         self.items = []
@@ -33,11 +42,20 @@ class Stack:
             show_map(x)
             i = i + 1
 
+    def rest(self):
+        tmp = ''
+        for x in self.items:
+            tmp = tmp + str(x)
+        return tmp
+
 
 map_stack = Stack()  # 用来记录安装芯片后的地图信息
-chip_stack = Stack()  # 用来记录安装的芯片的顺序
+chip_stack = Stack()  # 用来记录安装的芯片在芯片池中的起始序号
 ChipList33 = [(0, 0), (0, 1), (0, 2),
               (1, 0), (1, 1), (1, 2)]
+ChipList222 = [(0, 0), (0, 1),
+               (1, 0), (1, 1),
+               (2, 0), (2, 1)]
 ChipList6 = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5)]
 MapLList = [[0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
@@ -45,7 +63,8 @@ MapLList = [[0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0]]
-ChipPoolLists = [ChipList33, ChipList6]
+ChipPoolLists = [ChipList33, ChipList222, ChipList6]
+resultList = []
 
 
 # 用于在屏幕上输出map的图像结果
@@ -60,26 +79,60 @@ def show_map(ml):
     print(_resStr)
 
 
-def install_chip(_map):
+# 传入的_chip是上一次插入的芯片序号
+# 返回0的时候是按预设情况正常结束,返回1则异常结束
+def install_chip(_map, _chip=-1):
+    # 用于中断递归的条件
+    if map_stack.empty() and _chip == (len(ChipPoolLists) - 1):
+        print('install_chip is completed')
+        return
+    chip_start = _chip + 1  # 记录本次芯片池中插入芯片的起始序号
     maplist = copy.deepcopy(_map)
     _MapWidth = len(maplist)
     for x in range(_MapWidth):
         for y in range(_MapWidth):
-            # 这边的xy是可插入点坐标
-            for chiplist in ChipPoolLists:
-                if insertable(x, y, chiplist, maplist):
-                    no = map_stack.size() + 1
-                    inserted(x, y, chiplist, no)
-                    show_map(MapLList)
-                    maplist_push = copy.deepcopy(MapLList)
-                    map_stack.push(maplist_push)
-                    print('==============================')
-                    break
-                else:
-                    pass
-
-    print('install_chip is completed')
-    return
+            # 这边得到的xy是可插入点坐标,下面的Z是芯片池中的序号
+            if maplist[x][y] == 0:
+                for z in range(chip_start, len(ChipPoolLists)):
+                    chiplist = ChipPoolLists[z]
+                    if insertable(x, y, chiplist, maplist):
+                        # no = map_stack.size()  # 插入位置的数值,用来区分插入的是哪一块芯片
+                        no = map_stack.size() + 1  # 插入位置的数值,用来区分插入的是哪一块芯片
+                        maplist = inserted(x, y, chiplist, no, maplist)
+                        chip_start = 0
+                        # show_map(maplist)
+                        map_stack.push(maplist)
+                        chip_stack.push(z)
+                        # print('==============================')
+                        break
+                    else:
+                        # 遍历整个芯片池还是没有成功插入
+                        if z == len(ChipPoolLists) - 1:
+                            if chip_stack.empty():
+                                return
+                            else:
+                                tempc0 = chip_stack.pop()
+                            map_stack.pop()
+                            if map_stack.empty():
+                                tempm0 = copy.deepcopy(MapLList)
+                            else:
+                                tempm0 = map_stack.top()
+                            install_chip(tempm0, tempc0)
+                        else:
+                            pass
+            else:
+                continue
+    if isfulll(maplist):
+        resultList.append(maplist)
+        show_map(maplist)
+        print("+++有一个方案已经完成+++")
+    map_stack.pop()
+    tempc1 = chip_stack.pop()
+    if map_stack.empty():
+        tempm1 = copy.deepcopy(MapLList)
+    else:
+        tempm1 = map_stack.top()
+    install_chip(tempm1, tempc1)
 
 
 def insertable(x, y, _chiplist, _map):
@@ -105,7 +158,7 @@ def inserted(x, y, _chiplist, _no, _map):
     for g in _chiplist:
         xp, yp = g
         maplist[x + xp][y + yp] = _no
-    print(_chiplist, 'is inserted')
+    # print(_chiplist, 'is inserted')
     return maplist
 
 
@@ -125,7 +178,8 @@ def rotate90(_chiplist, _time=0):
 
 # 返回False为不满,代表未完全插入;返回True为满,已经完全插入.
 def isfulll(_map):
-    _MapWidth = len(MapLList)
+    maplist = copy.deepcopy(_map)
+    _MapWidth = len(maplist)
     for x in range(_MapWidth):
         for y in range(_MapWidth):
             if _map[x][y] == 0:
@@ -133,7 +187,16 @@ def isfulll(_map):
     return True
 
 
+def writefile(_aimlist):
+    with open('./resultList.txt', 'w') as f:
+        for x in _aimlist:
+            f.write(str(x) + '\n==========\n')
+    print('已经成功写入文件到', 'resultList.txt')
+
+
 if __name__ == "__main__":
-    install_chip()
-    map_stack.show()
+    # map_stack.push(copy.deepcopy(MapLList))
+    install_chip(MapLList, -1)
+    # writefile(resultList)
+    print('总共有', len(resultList), '个结果')
     print('the process is end')

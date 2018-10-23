@@ -2,8 +2,9 @@
 """
 功能:本程序旨在实验出少女前线重装部队芯片强化的最优情况
 作者:史学超
-更新日期:2018.10.22
+更新日期:2018.10.23
 现在已经实现了一个简单的模型,需要的是不断额往芯片池中添加芯片
+代码变得更简洁,生成的方案更多,也更加容易出现重复的地方
 """
 # TODO(sxc): 添加图像化界面
 # TODO(sxc): 芯片数据要能够附带属性
@@ -74,7 +75,10 @@ def show_map(ml):
     _MapWidth = len(MapLList)
     for x in range(_MapWidth):
         for y in range(_MapWidth):
-            _resStr = _resStr + str(_MapLList[x][y]) + '  '
+            if _MapLList[x][y] == -1:
+                _resStr = _resStr + 'x' + '  '
+            else:
+                _resStr = _resStr + str(_MapLList[x][y]) + '  '
         _resStr = _resStr + '\n'
     print(_resStr)
 
@@ -86,46 +90,31 @@ def install_chip(_map, _chip=-1):
     if map_stack.empty() and _chip == (len(ChipPoolLists) - 1):
         print('install_chip is completed')
         return
-    chip_start = _chip + 1  # 记录本次芯片池中插入芯片的起始序号
-    maplist = copy.deepcopy(_map)
-    _MapWidth = len(maplist)
-    for x in range(_MapWidth):
-        for y in range(_MapWidth):
-            # 这边得到的xy是可插入点坐标,下面的Z是芯片池中的序号
-            if maplist[x][y] == 0:
-                for z in range(chip_start, len(ChipPoolLists)):
-                    chiplist = ChipPoolLists[z]
-                    if insertable(x, y, chiplist, maplist):
-                        # no = map_stack.size()  # 插入位置的数值,用来区分插入的是哪一块芯片
-                        no = map_stack.size() + 1  # 插入位置的数值,用来区分插入的是哪一块芯片
-                        maplist = inserted(x, y, chiplist, no, maplist)
-                        chip_start = 0
-                        # show_map(maplist)
-                        map_stack.push(maplist)
-                        chip_stack.push(z)
-                        # print('==============================')
-                        break
-                    else:
-                        # 遍历整个芯片池还是没有成功插入
-                        if z == len(ChipPoolLists) - 1:
-                            if chip_stack.empty():
-                                return
-                            else:
-                                tempc0 = chip_stack.pop()
-                            map_stack.pop()
-                            if map_stack.empty():
-                                tempm0 = copy.deepcopy(MapLList)
-                            else:
-                                tempm0 = map_stack.top()
-                            install_chip(tempm0, tempc0)
-                        else:
-                            pass
-            else:
-                continue
-    if isfulll(maplist):
-        resultList.append(maplist)
-        show_map(maplist)
-        print("+++有一个方案已经完成+++")
+    if _chip != (len(ChipPoolLists) - 1):
+        chip_start = _chip + 1  # 记录本次芯片池中插入芯片的起始序号
+        maplist = copy.deepcopy(_map)
+        _MapWidth = len(maplist)
+        for x in range(_MapWidth):
+            for y in range(_MapWidth):
+                # 这边得到的xy是可插入点坐标,下面的Z是芯片池中的序号
+                if maplist[x][y] == 0:
+                    for z in range(chip_start, len(ChipPoolLists)):
+                        chiplist = ChipPoolLists[z]
+                        if insertable(x, y, chiplist, maplist):
+                            no = map_stack.size() + 1  # 插入位置的数值,用来区分插入的是哪一块芯片
+                            maplist = inserted(x, y, chiplist, no, maplist)
+                            chip_start = 0
+                            # show_map(maplist)
+                            map_stack.push(maplist)
+                            chip_stack.push(z)
+                            # print('==============================')
+                            break
+                else:
+                    continue
+        if isfulll(maplist):
+            resultList.append(maplist)
+            show_map(maplist)
+            print("+++有一个方案已经完成+++")
     map_stack.pop()
     tempc1 = chip_stack.pop()
     if map_stack.empty():
@@ -133,6 +122,7 @@ def install_chip(_map, _chip=-1):
     else:
         tempm1 = map_stack.top()
     install_chip(tempm1, tempc1)
+    return
 
 
 def insertable(x, y, _chiplist, _map):
@@ -196,7 +186,7 @@ def writefile(_aimlist):
 
 if __name__ == "__main__":
     # map_stack.push(copy.deepcopy(MapLList))
-    install_chip(MapLList, -1)
+    # install_chip(MapLList, -1)
     # writefile(resultList)
     print('总共有', len(resultList), '个结果')
     print('the process is end')
